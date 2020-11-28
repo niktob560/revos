@@ -18,6 +18,8 @@ use tar::Archive;
 extern crate fs_extra;
 use fs_extra::dir;
 
+use std::process::Command;
+
 
 const OSCONFIG_FILE_NAME: &str = "./.revos.json";
 const HELP_STRING: &str = "Usage:\n\trock [init,create,edit] [args]";
@@ -292,6 +294,34 @@ fn main() -> std::io::Result<()> {
                 },
                 _ => ()
             }
+        },
+        "build" => {
+            fs::create_dir("./Build")?;
+            // Create apps provided funcs defs
+            let mut mods_src = format!("#ifndef __MODS_H__\n#define __MODS_H__\n");
+            let osconf = OSConfig::from_file(OSCONFIG_FILE_NAME.to_owned())?;
+
+            let funcs: Vec<String> = osconf.apps.iter().map(|s| {
+                    let appconf = AppConfig::from_file(format!("./{}.app/.app.json", s)).expect(format!("Unable to read app config {}", s).as_str());
+                    appconf.provides.clone()
+                }).collect();
+            
+            let defs = funcs.iter().fold((format!(""), format!("")), |acc, s| {
+                (acc.0 + "void " + s + "();\n", s.to_owned() + ", " + &acc.1)
+            });
+
+            let func_defs = defs.0;
+            let task_list = defs.1;
+
+            mods_src = mods_src + func_defs.as_str() + "\n#define __TASKS__ " + task_list.as_str() + "\n";
+            mods_src = mods_src + "#endif";
+
+            fs::write("Build/mods.h", mods_src)?;
+
+            Command::new("make").spawn()?;
+        },
+        "clean" => {
+            Command::new("make").arg("clean").spawn()?;
         },
         _ => println!("{}", HELP_STRING)
     }
