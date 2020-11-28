@@ -5,9 +5,6 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdlib.h>
-#include "base.h"
-#include "template.h"
-#include <stdlib.h>
 
 
     #ifndef bool
@@ -21,7 +18,7 @@ typedef enum
     #endif /*ifndef bool*/
 
 
-#define __TASKS__ __template_app_task__
+#define __TASKS__ main
 
 extern void (*_taskFunctions[])();
 

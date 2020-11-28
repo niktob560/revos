@@ -292,7 +292,7 @@ fn main() -> std::io::Result<()> {
                 },
                 _ => ()
             }
-        }
+        },
         _ => println!("{}", HELP_STRING)
     }
     Ok(())
