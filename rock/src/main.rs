@@ -24,6 +24,12 @@ use std::process::Command;
 const OSCONFIG_FILE_NAME: &str = "./.revos.json";
 const HELP_STRING: &str = "Usage:\n\trock [init,create,edit] [args]";
 
+trait Config<T> {
+    fn empty() -> T;
+    fn save(self) -> std::io::Result<()>;
+    fn from_file(filepath: String) -> std::io::Result<T>;
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct AVRPlatformSpecificConfig
 {
@@ -64,7 +70,7 @@ impl AVRPlatformSpecificConfig {
     }
 }
 
-impl OSConfig {
+impl Config<OSConfig> for OSConfig {
     fn empty() -> OSConfig {
         OSConfig{drivers: Vec::new(), apps: Vec::new(), platform_spec: PlatformSpecific::AVR(AVRPlatformSpecificConfig::empty())}
     }
@@ -93,15 +99,21 @@ impl fmt::Display for OSConfig {
     }
 }
 
-impl AppConfig {
-    fn empty(name: String) -> AppConfig {
-        AppConfig{name: name.clone(), provides: name.clone(), requiers_apps: Vec::new(), requiers_drivers: Vec::new()}
+impl Config<AppConfig> for AppConfig {
+    fn empty() -> AppConfig {
+        AppConfig{name: "".to_owned(), provides: "".to_owned(), requiers_apps: Vec::new(), requiers_drivers: Vec::new()}
     }
 
     fn save(self) -> std::io::Result<()> {
         save_config(&self, format!("./{}.app/.app.json", self.name.clone()))
     }
 
+    fn from_file(filepath: String) -> std::io::Result<AppConfig> {
+        Ok(serde_json::from_str(&fs::read_to_string(filepath).expect("Unable to read config"))?)
+    }
+}
+
+impl AppConfig {
     fn create(self) -> std::io::Result<()> {
         let mut osconf = OSConfig::from_file(OSCONFIG_FILE_NAME.to_owned())?;
         if osconf.apps.contains(&self.name) {
@@ -116,10 +128,6 @@ impl AppConfig {
         osconf.save()?;
 
         Ok(())
-    }
-
-    fn from_file(filepath: String) -> std::io::Result<AppConfig> {
-        Ok(serde_json::from_str(&fs::read_to_string(filepath).expect("Unable to read config"))?)
     }
 }
 
@@ -159,15 +167,21 @@ impl fmt::Display for AppConfig {
     }
 }
 
-impl DriverConfig {
-    fn empty(name: String) -> DriverConfig {
-        DriverConfig{name: name.clone(), provides: name.clone(), requiers: Vec::new()}
+impl Config<DriverConfig> for DriverConfig {
+    fn empty() -> DriverConfig {
+        DriverConfig{name: "".to_owned(), provides: "".to_owned(), requiers: Vec::new()}
     }
 
     fn save(self) -> std::io::Result<()> {
         save_config(&self, format!("./{}.driver/.driver.json", self.name.clone()))
     }
 
+    fn from_file(filepath: String) -> std::io::Result<DriverConfig> {
+        Ok(serde_json::from_str(&fs::read_to_string(filepath).expect("Unable to read config"))?)
+    }
+}
+
+impl DriverConfig {
     fn create(self) -> std::io::Result<()> {
 
         let mut osconf = OSConfig::from_file(OSCONFIG_FILE_NAME.to_owned())?;
@@ -182,10 +196,6 @@ impl DriverConfig {
         self.save()?;
         osconf.save()?;
         Ok(())
-    }
-
-    fn from_file(filepath: String) -> std::io::Result<DriverConfig> {
-        Ok(serde_json::from_str(&fs::read_to_string(filepath).expect("Unable to read config"))?)
     }
 }
 
@@ -287,7 +297,7 @@ fn main() -> std::io::Result<()> {
                         return Ok(());
                     }
                     let app_name = args[3].to_owned();
-                    let conf = AppConfig::empty(app_name.clone());
+                    let conf = AppConfig{name: app_name.clone(), provides: app_name.clone(), requiers_apps: Vec::new(), requiers_drivers: Vec::new()};
                     conf.create().expect("Unable to create app config");
                     fs::copy("./.distro/template.app/Makefile", format!("./{}.app/Makefile", app_name)).expect("Unable to init makefile");
                     fs::write(format!("./{}.app/main.c", app_name), format!("void {}()\n{}", app_name, "{\n\n}\n")).expect("Unable to init .c file");
@@ -299,7 +309,7 @@ fn main() -> std::io::Result<()> {
                     }
                     let driver_name = args[3].to_owned();
 
-                    let conf = DriverConfig::empty(driver_name.clone());
+                    let conf = DriverConfig{name: driver_name.clone(), provides: driver_name.clone(), requiers: Vec::new()};
                     conf.create().expect("Unable init config file");
 
                     fs::copy("./.distro/gpio_c.driver/Makefile", format!("./{}.driver/Makefile", driver_name)).expect("Unable to init makefile");
@@ -379,6 +389,97 @@ fn main() -> std::io::Result<()> {
         },
         "clean" => {
             Command::new("make").arg("clean").spawn()?;
+        },
+        "edit" => {
+            if args.len() < 3 {
+                println!("Usage:\n\trock edit [os,app,driver] [args]");
+                return Ok(())
+            }
+            match args[2].as_ref() {
+                "os" => {
+                    println!("Nothing to edit yet");
+                },
+                "app" => {
+                    if args.len() < 5 {
+                        println!("Usage:\n\trock edit app [appname] [provides, requiers]");
+                        return Ok(())
+                    }
+                    let app_name = args[3].clone();
+                    let mut osconf = OSConfig::from_file(OSCONFIG_FILE_NAME.to_owned()).expect("Unable to read os config");
+                    let mut appconf = AppConfig::from_file(format!("./{}.app/.app.json", app_name)).expect("Unable to read app config");
+                    match args[4].as_ref() {
+                        "provides" => {
+                            if args.len() < 6 {
+                                println!("Usage:\n\trock edit app [appname] provides [new value]");
+                                return Ok(());
+                            }
+                            appconf.provides = args[5].clone();
+                            appconf.save().expect("Unable to save app config");
+                        },
+                        "requiers" => {
+                            if args.len() < 8 {
+                                println!("Usage:\n\trock edit app [appname] requiers [apps,drivers] [add,remove] [name]");
+                                return Ok(())
+                            }
+                            let (mut req_app, mut req_os) =
+                                match args[5].as_ref() {
+                                    "apps" => (appconf.requiers_apps.clone(), osconf.apps.clone()),
+                                    "drivers" => (appconf.requiers_drivers.clone(), osconf.drivers.clone()),
+                                    _ => panic!("Bad edit type"),
+                                };
+
+                            match args[6].as_ref() {
+                                "add" => {
+                                    if req_os.contains(&args[7]) {
+                                        println!("Already registered {}", args[7].clone());
+                                        return Ok(())
+                                    }
+                                    else {
+                                        let distro_config = OSConfig::from_file(format!("./.distro/{}", OSCONFIG_FILE_NAME)).expect("Unable to read distro config");
+                                        let distro_req = match args[5].as_ref() {
+                                            "apps" => distro_config.apps.clone(),
+                                            "drivers" => distro_config.drivers.clone(),
+                                            _ => panic!("Bad edit type"),
+                                        };
+                                        if distro_req.contains(&args[7]) {
+                                            req_app.push(args[7].clone());
+                                            req_os.push(args[7].clone());
+                                            let filename = args[7].clone() + "." + args[5].clone().replace("s", "").as_str();
+                                            println!("fname: {}", filename);
+                                            dir::copy(format!("./.distro/{}", filename), "./", &CopyOptions::new()).expect("Unable to copy");
+                                        }
+                                        else {
+                                            println!("Unable to find {}", args[7].clone());
+                                            return Ok(())
+                                        }
+                                    }
+                                },
+                                "remove" => {
+                                    let name = args[7].clone();
+                                    req_app.remove(req_app.iter().position(|x| *x == name).expect(format!("Provided {} not found", args[5].clone()).as_str()));
+                                    req_os.remove(req_os.iter().position(|x| *x == name).expect(format!("Provided {} not found", args[5].clone()).as_str()));
+                                },
+                                _ => panic!("Bad action")
+                            };
+                            match args[5].as_ref() {
+                                "apps" => {
+                                    appconf.requiers_apps = req_app;
+                                    osconf.apps = req_os;
+                                },
+                                "drivers" =>{
+                                    appconf.requiers_drivers = req_app;
+                                    osconf.drivers = req_os;
+                                },
+                                _ => panic!("Bad edit type"),
+                            };
+                            osconf.save().expect("Unable to save os config");
+                            appconf.save().expect("Unable to save app config");
+                        },
+                        _ => println!("Usage:\n\trock edit app [appname] [provides|requiers_apps|requiers_drivers] [args]")
+                    }
+                },
+                _ => println!("Usage:\n\trock edit [os,app,driver] [args]"),
+            }
         },
         _ => panic!("{}", HELP_STRING)
     }
