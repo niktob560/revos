@@ -7,5 +7,5 @@ void baz(void) {}
 
 void template()
 {
-	
+
 }
