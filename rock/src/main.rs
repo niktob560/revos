@@ -296,7 +296,7 @@ fn main() -> std::io::Result<()> {
             }
         },
         "build" => {
-            fs::create_dir("./Build")?;
+            fs::create_dir("./Build");
             // Create apps provided funcs defs
             let mut mods_src = format!("#ifndef __MODS_H__\n#define __MODS_H__\n");
             let osconf = OSConfig::from_file(OSCONFIG_FILE_NAME.to_owned())?;
