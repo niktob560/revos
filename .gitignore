@@ -1,0 +1,7 @@
+Build/*
+Build
+*.o
+*.lst
+*.eep
+*.hex
+*sublime*
