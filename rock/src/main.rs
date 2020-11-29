@@ -86,7 +86,7 @@ impl fmt::Display for OSConfig {
         }
         data = data + "    Apps:\n";
         for i in &self.apps {
-            data = data + "      - " + i;
+            data = data + "      - " + i + "\n";
         }
         data = format!("{}{}", data, self.platform_spec);
         write!(f, "{}", data)
