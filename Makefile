@@ -5,8 +5,9 @@ LIBS=
 STANDART=c99
 OPTIMIZE=-Os
 TARGET=main
-MCU=atmega128
-F_CPU=16000000L
+# Must be defined in calling app
+# MCU=atmega128
+# F_CPU=16000000L
 
 APPS=$(wildcard *.app)
 

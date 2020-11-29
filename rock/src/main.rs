@@ -24,13 +24,26 @@ use std::process::Command;
 const OSCONFIG_FILE_NAME: &str = "./.revos.json";
 const HELP_STRING: &str = "Usage:\n\trock [init,create,edit] [args]";
 
-#[derive(Debug, Deserialize, Serialize)]
-struct OSConfig {
-	drivers: Vec<String>,
-	apps: Vec<String>
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct AVRPlatformSpecificConfig
+{
+    f_cpu: i32,
+    mcu: String
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+enum PlatformSpecific {
+    AVR(AVRPlatformSpecificConfig)
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct OSConfig {
+	drivers: Vec<String>,
+    apps: Vec<String>,
+    platform_spec: PlatformSpecific
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct AppConfig {
     name: String,
     provides: String,
@@ -38,16 +51,22 @@ struct AppConfig {
     requiers_drivers: Vec<String>
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct DriverConfig {
     name: String,
     provides: String,
     requiers: Vec<String>
 }
 
+impl AVRPlatformSpecificConfig {
+    fn empty() -> AVRPlatformSpecificConfig {
+        AVRPlatformSpecificConfig{f_cpu: 0, mcu: format!("")}
+    }
+}
+
 impl OSConfig {
     fn empty() -> OSConfig {
-        OSConfig{drivers: Vec::new(), apps: Vec::new()}
+        OSConfig{drivers: Vec::new(), apps: Vec::new(), platform_spec: PlatformSpecific::AVR(AVRPlatformSpecificConfig::empty())}
     }
 
     fn save(self) -> std::io::Result<()> {
@@ -69,6 +88,7 @@ impl fmt::Display for OSConfig {
         for i in &self.apps {
             data = data + "      - " + i;
         }
+        data = format!("{}{}", data, self.platform_spec);
         write!(f, "{}", data)
     }
 }
@@ -100,6 +120,16 @@ impl AppConfig {
 
     fn from_file(filepath: String) -> std::io::Result<AppConfig> {
         Ok(serde_json::from_str(&fs::read_to_string(filepath).expect("Unable to read config"))?)
+    }
+}
+
+impl fmt::Display for PlatformSpecific {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PlatformSpecific::AVR(conf) => {
+                write!(f, "    [AVR]:\n        F_CPU: {}\n        MCU: {}", conf.f_cpu, conf.mcu)
+            }
+        }
     }
 }
 
@@ -215,8 +245,23 @@ fn main() -> std::io::Result<()> {
 
     match args[1].as_ref() {
         "init" => {
-            download_distro()?;
-            OSConfig::empty().save()?;
+            if args.len() < 3 {
+                println!("Usage:\n\trock init [architecture] [args]");
+                return Ok(());
+            }
+            let platform_config = match args[2].as_ref() {
+                "avr" => {
+                    if args.len() < 5 {
+                        println!("Usage:\n\trock init avr [MCU] [F_CPU]");
+                        return Ok(())
+                    }
+                    PlatformSpecific::AVR(AVRPlatformSpecificConfig{mcu: args[3].to_owned(), f_cpu: args[4].parse::<i32>().unwrap()})
+                },
+                _ => panic!("{}", HELP_STRING)
+            };
+            download_distro().expect("Unable to download distro");
+            let conf = OSConfig{drivers: Vec::new(), apps: Vec::new(), platform_spec: platform_config};
+            conf.save().expect("Unable to save OSConfig");
             match dir::copy("./.distro/base.app", "./", &CopyOptions::new()) {
                 Ok(_) => (),
                 _ => panic!("Failed to copy base.app")
@@ -259,7 +304,10 @@ fn main() -> std::io::Result<()> {
 
                     println!("Done driver {}", driver_name);
                 },
-                _ => println!("Usage:\n\trock create [app,driver] [args]")
+                _ => {
+                    println!("Usage:\n\trock create [app,driver] [args]");
+                    return Ok(())
+                }
             }
         },
         "show" => {
@@ -280,7 +328,7 @@ fn main() -> std::io::Result<()> {
                     }
                 },
                 "app" => {
-                    if args.len() < 4 {
+                    if args.len() < 4 { 
                         println!("Usage:\n\trock show app [app name]");
                         return Ok(());
                     }
@@ -319,12 +367,18 @@ fn main() -> std::io::Result<()> {
 
             fs::write("Build/mods.h", mods_src)?;
 
-            Command::new("make").status()?;
+            let mut proc = Command::new("make");
+            let cmd = match osconf.platform_spec{
+                PlatformSpecific::AVR(c) => {
+                    proc.arg("-e").arg(format!("F_CPU={}", c.f_cpu)).arg("-e").arg(format!("MCU={}", c.mcu))
+                }
+            };
+            cmd.status().expect("Failed to run make command");
         },
         "clean" => {
             Command::new("make").arg("clean").spawn()?;
         },
-        _ => println!("{}", HELP_STRING)
+        _ => panic!("{}", HELP_STRING)
     }
     Ok(())
 }
