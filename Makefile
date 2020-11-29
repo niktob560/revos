@@ -26,7 +26,7 @@ apps: $(APPS)
 
 %.app: Makefile .FORCE
 	@echo -e '\033[1;32mBuilding app '$@'\033[0m'
-	@$(MAKE) -C $(shell echo $@ | sed 's/^clean_//g')
+	@$(MAKE) -e F_CPU=$(F_CPU) -e MCU=$(MCU) -C $(shell echo $@ | sed 's/^clean_//g')
 
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS)

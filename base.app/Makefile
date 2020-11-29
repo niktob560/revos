@@ -1,13 +1,11 @@
 CC=avr-gcc
 STANDART=c99
 OPTIMIZE=-Os
-MCU=atmega128
-
 
 
 C_INCLUDES=-I./
 
-C_DEFS=-DF_CPU=16000000L
+C_DEFS=-DF_CPU=$(F_CPU)
 
 CFLAGS=$(C_DEFS) $(C_INCLUDES) $(OPTIMIZE) --std=$(STANDART) -Wno-write-strings -Wcast-align -Wcast-qual -Wconversion -Wduplicated-branches -Wduplicated-cond -Wfloat-equal -Wlogical-op -Wredundant-decls -Wsign-conversion -Werror -Werror -Wall -Wextra -Wpedantic -pedantic-errors -pedantic -mmcu=$(MCU)
 
