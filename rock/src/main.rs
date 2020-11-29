@@ -288,9 +288,9 @@ fn main() -> std::io::Result<()> {
                     }
                     let app_name = args[3].to_owned();
                     let conf = AppConfig::empty(app_name.clone());
-                    conf.create()?;
-                    fs::copy("./.distro/template.app/Makefile", format!("./{}.app/Makefile", app_name))?;
-                    fs::write(format!("./{}.app/main.c", app_name), format!("void {}()\n{}", app_name, "{\n\n}\n"))?;
+                    conf.create().expect("Unable to create app config");
+                    fs::copy("./.distro/template.app/Makefile", format!("./{}.app/Makefile", app_name)).expect("Unable to init makefile");
+                    fs::write(format!("./{}.app/main.c", app_name), format!("void {}()\n{}", app_name, "{\n\n}\n")).expect("Unable to init .c file");
                 },
                 "driver" => {
                     if args.len() < 4 {
@@ -300,9 +300,11 @@ fn main() -> std::io::Result<()> {
                     let driver_name = args[3].to_owned();
 
                     let conf = DriverConfig::empty(driver_name.clone());
-                    conf.create()?;
+                    conf.create().expect("Unable init config file");
 
-                    println!("Done driver {}", driver_name);
+                    fs::copy("./.distro/gpio_c.driver/Makefile", format!("./{}.driver/Makefile", driver_name)).expect("Unable to init makefile");
+                    fs::write(format!("./{}.driver/main.h", driver_name), format!("#ifndef __{}_H__\n#define __{}_H__\n\n\n#endif\n", driver_name.to_uppercase(), driver_name.to_uppercase())).expect("Unable to init .h file");
+                    fs::write(format!("./{}.driver/main.c", driver_name), format!("#include \"main.h\"\n")).expect("Unable init .c file");
                 },
                 _ => {
                     println!("Usage:\n\trock create [app,driver] [args]");
