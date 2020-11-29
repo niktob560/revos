@@ -48,12 +48,37 @@ void schedule()
 	sei();
 }
 
+#ifdef TCCR0
+#define TCCR TCCR0
+#define OCIE OCIE0
+#define OCF OCF0
+#define OCR OCR0
+#elif defined(TCCR0A)
+#define TCCR TCCR0A
+#define OCIE OCIE0A
+#define OCF OCF0A
+#define OCR OCR0A
+#define TIMSK TIMSK0
+#define TIMER0_COMP_vect TIMER0_COMPA_vect
+#else
+#pragma error Unable to run schedule on this MCU
+#endif
+
+#ifndef TIFR
+#ifdef EIFR
+#define TIFR EIFR
+#else
+#pragma error Unable to run schedule on this MCU
+#endif
+#endif
+
+
 int16_t main() 
 {
-	TCCR0 = (1 << WGM01) | (1 << CS02) | (0 << CS01) | (0 << CS00);
-	TIMSK = 1 << OCIE0;
-	TIFR = 1 << OCF0;
-	OCR0 = 125;
+	TCCR = (1 << WGM01) | (1 << CS02) | (0 << CS01) | (0 << CS00);
+	TIMSK = 1 << OCIE;
+	TIFR = 1 << OCF;
+	OCR = 125;
 	while(true) 
 	{
 		sei();
