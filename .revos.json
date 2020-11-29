@@ -1,1 +1,1 @@
-{"drivers":["gpio_c"],"apps":[],"platform_spec":{"AVR":{"f_cpu":16000000,"mcu":"atmega2560"}}}
+{"drivers":["gpio_c"],"apps":["template"],"platform_spec":{"AVR":{"f_cpu":16000000,"mcu":"atmega2560"}}}

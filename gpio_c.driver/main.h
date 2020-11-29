@@ -2,6 +2,7 @@
 #define __GPIO_C_H__
 
 #include <stdint.h>
+#include <avr/io.h>
 
 typedef enum 	{ OUTPUT, INPUT, INPUT_PULLUP }		GPIOMode;
 typedef enum	{ HIGH = 1, LOW = 0, TOGGLE = 2 }	GPIOState;

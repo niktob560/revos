@@ -10,23 +10,30 @@ TARGET=main
 # F_CPU=16000000L
 
 APPS=$(wildcard *.app)
+DRIVERS=$(wildcard *.driver)
 
 APP_OBJECTS=$(addsuffix /app.o, $(APPS))
+DRIVER_OBJECTS=$(addsuffix /driver.o, $(DRIVERS))
 
-CLEAN_OBJECTS=$(addprefix clean_, $(APPS))
+CLEAN_OBJECTS=$(addprefix clean_, $(APPS) $(DRIVERS))
 
 LFLAGS=$(OPTIMIZE) -Wno-write-strings -Wcast-align -Wcast-qual -Wconversion -Wctor-dtor-privacy -Wduplicated-branches -Wduplicated-cond -Wextra-semi -Wfloat-equal -Wlogical-op -Wnon-virtual-dtor -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wsign-conversion -Wsign-promo -Wall -Wextra -Wpedantic -pedantic-errors -flto -fuse-linker-plugin -ffunction-sections -fdata-sections -Wl,--gc-sections -mmcu=$(MCU) -lm $(LIBS)
 
-# TODO: add drivers objects
-OBJECTS=$(APP_OBJECTS)
+OBJECTS=$(APP_OBJECTS) $(DRIVER_OBJECTS)
 
-all: date apps size
+all: date apps drivers size
 
-.PHONY: apps clean
+.PHONY: apps drivers clean
 apps: $(APPS)
+
+drivers: $(DRIVERS)
 
 %.app: Makefile .FORCE
 	@echo -e '\033[1;32mBuilding app '$@'\033[0m'
+	@$(MAKE) -e F_CPU=$(F_CPU) -e MCU=$(MCU) -C $(shell echo $@ | sed 's/^clean_//g')
+
+%.driver: Makefile .FORCE
+	@echo -e '\033[1;32mBuilding driver '$@'\033[0m'
 	@$(MAKE) -e F_CPU=$(F_CPU) -e MCU=$(MCU) -C $(shell echo $@ | sed 's/^clean_//g')
 
 
@@ -47,6 +54,10 @@ size: $(BUILD_DIR)/$(TARGET).hex
 
 clean_%.app:
 	@echo -e '\033[0;31mCleaning app '$(shell echo $@ | sed 's/^clean_//g')'\033[0m'
+	@$(MAKE) -C $(shell echo $@ | sed 's/^clean_//g') clean
+
+clean_%.driver:
+	@echo -e '\033[0;31mCleaning driver '$(shell echo $@ | sed 's/^clean_//g')'\033[0m'
 	@$(MAKE) -C $(shell echo $@ | sed 's/^clean_//g') clean
 
 clean: $(CLEAN_OBJECTS)
