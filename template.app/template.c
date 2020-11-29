@@ -4,9 +4,8 @@
 
 void baz(void) {}
 
-// registerApp(bar);
 
-void __template_app_task__()
+void template()
 {
-
+	
 }

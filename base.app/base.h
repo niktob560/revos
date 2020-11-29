@@ -1,10 +1,12 @@
 #ifndef __BASE_H__
     #define __BASE_H__
 #include <stdint.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <util/delay.h>
-#include <stdlib.h>
+// #include <avr/io.h>
+// #include <avr/interrupt.h>
+// #include <util/delay.h>
+// #include <stdlib.h>
+
+#include "../Build/mods.h"
 
 
     #ifndef bool
@@ -18,7 +20,9 @@ typedef enum
     #endif /*ifndef bool*/
 
 
-#define __TASKS__ main
+#ifndef __TASKS__
+#pragma error __TASKS__ variable does not defined
+#endif
 
 extern void (*_taskFunctions[])();
 

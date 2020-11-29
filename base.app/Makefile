@@ -5,7 +5,7 @@ MCU=atmega128
 
 
 
-C_INCLUDES=-I../
+C_INCLUDES=-I./
 
 C_DEFS=-DF_CPU=16000000L
 
@@ -16,7 +16,7 @@ all: app.o
 
 app.o:
 	@echo -e '\033[1;32mCC\t'base.c'\t->\t'$@'\033[0m'
-	@$(CC) $(CFLAGS) -Wa,-a,-ad,-alms=base.lst base.c -o app.o
+	@$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=base.lst base.c -o app.o
 
 .PHONY: clean
 clean:
