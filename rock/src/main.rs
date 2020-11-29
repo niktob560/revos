@@ -244,7 +244,8 @@ fn main() -> std::io::Result<()> {
                     let app_name = args[3].to_owned();
                     let conf = AppConfig::empty(app_name.clone());
                     conf.create()?;
-                    println!("Creating app {}", app_name);
+                    fs::copy("./.distro/template.app/Makefile", format!("./{}.app/Makefile", app_name))?;
+                    fs::write(format!("./{}.app/main.c", app_name), format!("void {}()\n{}", app_name, "{\n\n}\n"))?;
                 },
                 "driver" => {
                     if args.len() < 4 {
