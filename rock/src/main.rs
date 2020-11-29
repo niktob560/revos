@@ -318,7 +318,7 @@ fn main() -> std::io::Result<()> {
 
             fs::write("Build/mods.h", mods_src)?;
 
-            Command::new("make").spawn()?;
+            Command::new("make").status()?;
         },
         "clean" => {
             Command::new("make").arg("clean").spawn()?;
